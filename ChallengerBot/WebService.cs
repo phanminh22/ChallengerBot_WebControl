@@ -1,93 +1,66 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.SqlClient;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Timers;
-using MySql.Data;
 using MySql.Data.MySqlClient;
-using Newtonsoft.Json;
-using PVPNetConnect;
-using PVPNetConnect.RiotObjects.Platform.Catalog.Champion;
-using PVPNetConnect.RiotObjects.Platform.Clientfacade.Domain;
 
-namespace ChallengerBot
+namespace PVPNetBot
 {
     public class Accounts
     {
-        public int Id { get; set; }
-        public string Account { get; set; }
-        public string Password { get; set; }
-        public string Champion { get; set; }
-        public int Maxlevel { get; set; }
-        public bool Autoboost { get; set; }
+        public int Id;
+        public string Account;
+        public string Password;
+        public string Champion;
+        public int Maxlevel;
+        public bool Autoboost;
     }
 
     public class Settings
     {
-        public int MaxBots { get; set; }
-        public string Request { get; set; }
-
-        public string Region { get; set; }
-        public string GamePath { get; set; }
-        public string Difficulty { get; set; }
-        public int QueueType { get; set; }
+        public int MaxBots;
+        public string Request;
+        public string Region;
+        public string GamePath;
+        public string Difficulty;
+        public int QueueType;
     }
 
-    public static class WebService
+    internal class WebService : Client
     {
-        public static MySqlConnection SQL = null;
-
-        private static string Hostname = ChallengerConfig.MHost;
-        private static string Username = ChallengerConfig.MUser;
-        private static string Password = ChallengerConfig.MPass;
-        private static string Database = ChallengerConfig.MData;
-
+        public static MySqlConnection SQL;
         public static List<Accounts> Players = new List<Accounts>();
         public static Settings Setting = new Settings();
+        public static bool ConnectionEntablished = false;
 
-        public static string GetConnectionString()
+        public WebService()
         {
-            return "SERVER=" + Hostname + ";PASSWORD=" + Password + ";DATABASE=" + Database + ";UID=" + Username + ";";
-        }
+            if (!Configuration.IsMySQLEnabled)
+                return;
 
-        public static MySqlConnection NewConnection()
-        {
-            var mySqlConnection = new MySqlConnection(GetConnectionString());
-            mySqlConnection.Open();
-            return mySqlConnection;
-        }
-
-        public static void Initialize()
-        {
             try
             {
-                SQL = NewConnection();
+                SQL = new MySqlConnection(Configuration.ConnectionString);
+                SQL.Open();
             }
             catch (MySqlException mer)
             {
                 Console.WriteLine("Error: " + mer.Message);
-                Debug.WriteLine("Error occured: " + mer.ToString());
+                Debug.WriteLine("Error occured: " + mer);
                 return;
             }
-            finally
-            {
-                Console.WriteLine("MySQL connection successful!");
-                SQL.Close();
-            }
-            
+
+            ConnectionEntablished = true;
+            SQL.Close();
+
             Preload();
             LoadAccounts();
             LoadSettings();
         }
 
-        public static void Preload()
+        private static void Preload()
         {
-            using (var con = new MySqlConnection(GetConnectionString()))
+            using (var con = new MySqlConnection(Configuration.ConnectionString))
             {
                 using (var cmd = con.CreateCommand())
                 {
@@ -101,9 +74,9 @@ namespace ChallengerBot
             }
         }
 
-        public static void LoadSettings()
+        private static void LoadSettings()
         {
-            using (var con = new MySqlConnection(GetConnectionString()))
+            using (var con = new MySqlConnection(Configuration.ConnectionString))
             {
                 using (MySqlCommand cmd = con.CreateCommand())
                 {
@@ -130,8 +103,8 @@ namespace ChallengerBot
                             Environment.Exit(0);
                         }
 
-                        Core.ClientVersion = Controller.GetCurrentVersion(Setting.GamePath);
-                        if (Core.ClientVersion.Equals("0"))
+                        ClientVersion = Controller.GetCurrentVersion(Setting.GamePath);
+                        if (ClientVersion.Equals("0"))
                         {
                             Status("Unable to get client version! Check your game path!", "Console");
                             Environment.Exit(0);
@@ -143,9 +116,9 @@ namespace ChallengerBot
             }
         }
 
-        public static void LoadAccounts()
+        private static void LoadAccounts()
         {
-            using (var con = new MySqlConnection(GetConnectionString()))
+            using (var con = new MySqlConnection(Configuration.ConnectionString))
             {
                 using (MySqlCommand cmd = con.CreateCommand())
                 {
@@ -170,7 +143,6 @@ namespace ChallengerBot
                             Players.Add(account);
                         }
                     }
-
                     con.Close();
                 }
             }
@@ -178,7 +150,7 @@ namespace ChallengerBot
 
         public static void ExecuteNonQuery(string query)
         {
-            using (var con = new MySqlConnection(GetConnectionString()))
+            using (var con = new MySqlConnection(Configuration.ConnectionString))
             {
                 using (MySqlCommand cmd = con.CreateCommand())
                 {
@@ -203,7 +175,7 @@ namespace ChallengerBot
             ExecuteNonQuery(cmd);
         }      
 
-        public static void Status(string msg, string player)
+        public static void ConsoleStatus(string msg, string player)
         {
             var cmd = " INSERT INTO console (content, timestamp, player) VALUES ('" + msg + "', UNIX_TIMESTAMP(), '" + player + "'); ";
             ExecuteNonQuery(cmd);

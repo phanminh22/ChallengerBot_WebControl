@@ -8,7 +8,7 @@ using System.Threading;
 using ChallengerBot.SWF;
 using ChallengerBot.SWF.SWFTypes;
 
-namespace ChallengerBot
+namespace PVPNetBot
 {
     public static class Controller
     {

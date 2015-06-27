@@ -22,6 +22,7 @@ using System.Threading;
 using System.Web;
 using System.Web.Script.Serialization;
 using ChallengerBot;
+using PVPNetBot;
 using PVPNetConnect.RiotObjects;
 using PVPNetConnect.RiotObjects.Platform.Broadcast;
 using PVPNetConnect.RiotObjects.Platform.Game;
@@ -400,7 +401,7 @@ namespace PVPNetConnect
                     Disconnect();
 
                     // Reconnection.
-                    Core.ConnectPlayer(user);
+                    Client.ConnectPlayer(user);
                 }
 
                 return false;

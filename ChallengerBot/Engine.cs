@@ -1,28 +1,27 @@
-﻿using System.Text.RegularExpressions;
-using System;
-using MySql.Data.MySqlClient;
-using Newtonsoft.Json;
-
-#region Systemusing System;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Collections.Generic;
-using System.Threading;
 using System.Net.Http;
-using Timer = System.Timers.Timer;
-#endregion
-
+using System.Text.RegularExpressions;
+using System.Threading;
+using Newtonsoft.Json;
 using PVPNetConnect;
 using PVPNetConnect.RiotObjects.Platform.Catalog.Champion;
 using PVPNetConnect.RiotObjects.Platform.Clientfacade.Domain;
 using PVPNetConnect.RiotObjects.Platform.Game;
+using PVPNetConnect.RiotObjects.Platform.Gameinvite.Contract;
 using PVPNetConnect.RiotObjects.Platform.Matchmaking;
 using PVPNetConnect.RiotObjects.Platform.Statistics;
-using PVPNetConnect.RiotObjects.Platform.Gameinvite.Contract;
-using PVPNetConnect.RiotObjects.Team.Dto;
 using PVPNetConnect.RiotObjects.Platform.Systemstate;
+using PVPNetConnect.RiotObjects.Team.Dto;
 
-namespace ChallengerBot
+#region Systemusing System;
+
+using Timer = System.Timers.Timer;
+#endregion
+
+namespace PVPNetBot
 {
     internal class Engine
     {
@@ -56,16 +55,15 @@ namespace ChallengerBot
             #region Callbacks
             Connections.OnError += (object sender, Error error) =>
             {
-                WebService.Status("Error received: " + error.Message, AccountName);
+                Console.WriteLine("Error received: " + error.Message);
                 return;
             };
 
-            Connections.OnLogin += new PVPNetConnection.OnLoginHandler(OnLogin);
-            Connections.OnMessageReceived += new PVPNetConnection.OnMessageReceivedHandler(OnMessageReceived);
+            Connections.OnLogin += OnLogin;
+            Connections.OnMessageReceived += OnMessageReceived;
             #endregion
 
-            Connections.Connect(AccountName, playerBot.Password, curRegion, Core.ClientVersion);
-         
+            Connections.Connect(AccountName, playerBot.Password, curRegion, Client.ClientVersion);
         }
 
         private void OnLogin(object sender, string username, string ipAddress)
@@ -107,7 +105,7 @@ namespace ChallengerBot
 
                 if (SummonerLevel > Account.Maxlevel || Convert.ToInt32(SummonerLevel) == Account.Maxlevel)
                 {
-                    WebService.Status("Maximum level reached!", AccountName);
+                    Client.Status("Maximum level reached!", AccountName);
                     return;
                 }
                     
@@ -130,11 +128,11 @@ namespace ChallengerBot
                     return;
                 }
 
-                WebService.Status("Successfully connected!", AccountName);
-                Core.Accounts.Add(Packets);
+                Client.Status("Successfully connected!", AccountName);
+                Client.Accounts.Add(Packets);
 
-                var playerCount = Core.Accounts.Count();
-                var lastConnectedPlayer = Core.Accounts.LastOrDefault();
+                var playerCount = Client.Accounts.Count();
+                var lastConnectedPlayer = Client.Accounts.LastOrDefault();
                 if (Account.Autoboost) BuyBoost();
 
                 if (lastConnectedPlayer == null)
@@ -146,7 +144,7 @@ namespace ChallengerBot
 
                 if (playerCount == _setting.MaxBots && lastConnectedPlayer.AllSummonerData.Summoner.SumId.Equals(SummonerId))
                 {
-                    WebService.Status("Players connected! Creating lobby...", AccountName);
+                    Client.Status("Players connected! Creating lobby...", AccountName);
                     Timer createPremade = new Timer { Interval = 3000, AutoReset = false };
                     createPremade.Elapsed += (ek, eo) =>
                     {
@@ -164,7 +162,7 @@ namespace ChallengerBot
             {
                 if (!Controller.IsAvailable(SummonerQueue))
                 {
-                    WebService.Status("QueueType is invalid or it is not supported!", AccountName);
+                    Client.Status("QueueType is invalid or it is not supported!", AccountName);
                     return;
                 }
 
@@ -173,14 +171,14 @@ namespace ChallengerBot
 
                 if (_setting.Difficulty == "EASY" || _setting.Difficulty == "MEDIUM")
                 {
-                    Core.Lobby = await Connections.createArrangedBotTeamLobby(Game.Id, _setting.Difficulty);
+                    Client.Lobby = await Connections.createArrangedBotTeamLobby(Game.Id, _setting.Difficulty);
                 }
-                else Core.Lobby = await Connections.createArrangedTeamLobby(Game.Id);
+                else Client.Lobby = await Connections.createArrangedTeamLobby(Game.Id);
 
                 PlayerAcceptedInvite = true;
-                WebService.Status("Lobby created. Inviting players...", AccountName);
+                Client.Status("Lobby created. Inviting players...", AccountName);
 
-                foreach (var bot in Core.Accounts)
+                foreach (var bot in Client.Accounts)
                 {
                     if ((int)bot.AllSummonerData.Summoner.SumId != (int)SummonerId)
                         await Connections.Invite(bot.AllSummonerData.Summoner.SumId);
@@ -193,11 +191,11 @@ namespace ChallengerBot
             {
                 var invitation = message as InvitationRequest;
 
-                if (invitation.InvitationId == Core.Lobby.InvitationID && PlayerAcceptedInvite == false)
+                if (invitation.InvitationId == Client.Lobby.InvitationID && PlayerAcceptedInvite == false)
                 {
-                    Core.Lobby = await Connections.AcceptLobby(invitation.InvitationId);
+                    Client.Lobby = await Connections.AcceptLobby(invitation.InvitationId);
                     PlayerAcceptedInvite = true;
-                    WebService.Status("Invitation accepted.", AccountName);
+                    Client.Status("Invitation accepted.", AccountName);
                     return;
                 }
             }
@@ -208,11 +206,11 @@ namespace ChallengerBot
             {
                 #region Ignore pls
                 List<string> errors = new List<string>();
-                if (Core.Lobby == null)
+                if (Client.Lobby == null)
                     errors.Add("NO!");
-                if (SummonerName != Core.Lobby.Owner.SummonerName)
+                if (SummonerName != Client.Lobby.Owner.SummonerName)
                     errors.Add("Trying to access LobbyStatus not as owner.");
-                if (Core.LobbyStatusWaiting)
+                if (Client.LobbyStatusWaiting)
                     errors.Add("Currently waiting for all players.");
                 
                 if (errors.Count > 0)
@@ -228,25 +226,25 @@ namespace ChallengerBot
                 } 
                 #endregion
 
-                if (Core.Lobby.Members.Count < _setting.MaxBots && !Core.LobbyStatusWaiting)
+                if (Client.Lobby.Members.Count < _setting.MaxBots && !Client.LobbyStatusWaiting)
                 {
-                    Core.LobbyStatusWaiting = true;
-                    while (Core.Lobby.Members.Count < _setting.MaxBots)
+                    Client.LobbyStatusWaiting = true;
+                    while (Client.Lobby.Members.Count < _setting.MaxBots)
                         Thread.Sleep(100);
                 }
   
-                var lobbyInfo = Core.Lobby;
-                WebService.Status("Players are ready to start the game!", AccountName);
+                var lobbyInfo = Client.Lobby;
+                Client.Status("Players are ready to start the game!", AccountName);
                 
                 #region Queue
-                Core.LobbyGame.QueueIds = new Int32[1] { (int)SummonerQueue };
-                Core.LobbyGame.InvitationId = lobbyInfo.InvitationID;
-                Core.LobbyGame.Team = lobbyInfo.Members.Select(stats => Convert.ToInt32(stats.SummonerId)).ToList();
-                Core.LobbyGame.BotDifficulty = _setting.Difficulty;
+                Client.LobbyGame.QueueIds = new Int32[1] { (int)SummonerQueue };
+                Client.LobbyGame.InvitationId = lobbyInfo.InvitationID;
+                Client.LobbyGame.Team = lobbyInfo.Members.Select(stats => Convert.ToInt32(stats.SummonerId)).ToList();
+                Client.LobbyGame.BotDifficulty = _setting.Difficulty;
                 #endregion
 
-                OnMessageReceived(sender, await Connections.AttachTeamToQueue(Core.LobbyGame));
-                WebService.Status("Game search initialized!", AccountName);
+                OnMessageReceived(sender, await Connections.AttachTeamToQueue(Client.LobbyGame));
+                Client.Status("Game search initialized!", AccountName);
                 return;
             }
             #endregion
@@ -263,10 +261,10 @@ namespace ChallengerBot
                             break;
 
                         FirstSelection = true;
-                        WebService.Status("Champion select in.", AccountName);
+                        Client.Status("Champion select in.", AccountName);
                         await Connections.SetClientReceivedGameMessage(game.Id, "CHAMP_SELECT_CLIENT");
 
-                        if (Convert.ToInt32(game.Id) != 65)
+                        if (SummonerQueue != 65)
                         {
                             var hArray = HeroesArray.Shuffle();
                             await Connections.SelectChampion(hArray.First(hr => hr.FreeToPlay || hr.Owned || !hr.OwnedByYourTeam).ChampionId);
@@ -276,27 +274,27 @@ namespace ChallengerBot
                         break;
                     case "POST_CHAMP_SELECT":
                         FirstQueue = true;
-                        //WebService.Status("Post champion select.", AccountName);
+                        //Client.Status("Post champion select.", AccountName);
                         break;
                     case "PRE_CHAMP_SELECT":
                         break;
                     case "GAME_START_CLIENT":
-                        WebService.Status("Lauching League of Legends.", AccountName);
+                        Client.Status("Lauching League of Legends.", AccountName);
                         break;
                     case "GameClientConnectedToServer":
                         break;
                     case "IN_QUEUE":
-                        WebService.Status("Waiting for game.", AccountName);
+                        Client.Status("Waiting for game.", AccountName);
                         break;
                     case "TERMINATED":
                         FirstQueue = true;
                         PlayerAcceptedInvite = false;
-                        WebService.Status("Re-entering queue.", AccountName);
+                        Client.Status("Re-entering queue.", AccountName);
                         break;
                     case "JOINING_CHAMP_SELECT":
                         if (FirstQueue)
                         {
-                            WebService.Status("Game accepted!", AccountName);
+                            Client.Status("Game accepted!", AccountName);
                             FirstQueue = false;
                             FirstSelection = false;
                             await Connections.AcceptPoppedGame(true);
@@ -304,7 +302,7 @@ namespace ChallengerBot
                         }
                         break;
                     case "LEAVER_BUSTED":
-                        WebService.Status("Leave Busted!", AccountName);
+                        Client.Status("Leave Busted!", AccountName);
                         break;
                 }
             }
@@ -322,25 +320,25 @@ namespace ChallengerBot
                 startInfo.FileName = "League of Legends.exe";
                 startInfo.Arguments = "\"8394\" \"LoLLauncher.exe\" \"\" \"" + credentials.ServerIp + " " +
                                       credentials.ServerPort + " " + credentials.EncryptionKey + " " + credentials.SummonerId + "\"";
-                WebService.Status("Launching League of Legends", AccountName);
+                Client.Status("Launching League of Legends", AccountName);
                 
 
 
                 new Thread((ThreadStart)(() =>
                 {
-                    while (Core.ClientDelay)
+                    while (Client.ClientDelay)
                         Thread.Sleep(100);
 
-                    Core.ClientDelay = true;
+                    Client.ClientDelay = true;
                     LeagueProcess = Process.Start(startInfo);
                     LeagueProcess.Exited += LeagueProcess_Exited;
                     while (LeagueProcess.MainWindowHandle == IntPtr.Zero) ;
                     LeagueProcess.PriorityClass = ProcessPriorityClass.Idle;
                     LeagueProcess.EnableRaisingEvents = true;
-                    Timer clientDelay = new Timer { AutoReset = false, Interval = Core.Delay };
+                    Timer clientDelay = new Timer { AutoReset = false, Interval = Client.Delay };
                     clientDelay.Elapsed += (o, args) =>
                     {
-                        Core.ClientDelay = false;
+                        Client.ClientDelay = false;
                     };
                     clientDelay.Start();
                     
@@ -349,8 +347,8 @@ namespace ChallengerBot
 
             if (message is EndOfGameStats)
             {
-                Core.Accounts.Clear();
-                Core.LobbyStatusWaiting = false;
+                Client.Accounts.Clear();
+                Client.LobbyStatusWaiting = false;
 
                 // Process kill
                 LeagueProcess.Exited -= LeagueProcess_Exited;
@@ -369,13 +367,13 @@ namespace ChallengerBot
 
 
                 if (SummonerLevel < Packets.AllSummonerData.SummonerLevel.Level)
-                    WebService.Status("Level up! " + Packets.AllSummonerData.SummonerLevel.Level, AccountName);
+                    Client.Status("Level up! " + Packets.AllSummonerData.SummonerLevel.Level, AccountName);
 
                 // Player level limit
                 if (MaxLevelReached((int)Packets.AllSummonerData.SummonerLevel.Level))
                 {
                     // This player will not be added to lobby!
-                    WebService.Status("Maximum level reached!", AccountName);
+                    Client.Status("Maximum level reached!", AccountName);
                     return;
                 }
                 else if (Account.Autoboost) BuyBoost();
@@ -409,7 +407,7 @@ namespace ChallengerBot
                         }
                         else
                         {
-                            WebService.Status("Reason: " + x.ReasonFailed, AccountName);
+                            Client.Status("Reason: " + x.ReasonFailed, AccountName);
                             
                             return;
                         }
@@ -422,12 +420,12 @@ namespace ChallengerBot
                         var time = TimeSpan.FromMilliseconds(timeWait);
                         var players = string.Join(",", summoners.Select(s => s.Item1).ToArray());
                         Debug.WriteLine("Time wait" + timeWait + "ms." + "Counted summoners: " + summoners.Count + "; Summoners: " + players);
-                        WebService.Status("Waiting " + time.Minutes + " to be able to join queue", AccountName);
+                        Client.Status("Waiting " + time.Minutes + " mins to be able to join queue", AccountName);
                         Thread.Sleep(timeWait + 2999);
 
-                        if (SummonerName == Core.Lobby.Owner.SummonerName)
+                        if (SummonerName == Client.Lobby.Owner.SummonerName)
                         {
-                            OnMessageReceived(sender, await Connections.AttachToQueue(Core.LobbyGame, accessToken));
+                            OnMessageReceived(sender, await Connections.AttachToQueue(Client.LobbyGame, accessToken));
                         }
                     }
                 }
@@ -471,14 +469,14 @@ namespace ChallengerBot
                 storeItemList.Add(new KeyValuePair<string, string>("duration", "3"));
                 HttpContent httpContent = new FormUrlEncodedContent(storeItemList);
                 await httpClient.PostAsync(purchaseUrl, httpContent);
-                WebService.Status("Bought XP boost!", AccountName);
+                Client.Status("Bought XP boost!", AccountName);
                 httpClient.Dispose();
             }
         }
 
         private async void LeagueProcess_Exited(object sender, EventArgs e)
         {
-            WebService.Status("Restart League of Legends.", AccountName);
+            Client.Status("Restart League of Legends.", AccountName);
             Packets = await Connections.GetLoginDataPacketForUser();
             if (Packets.ReconnectInfo != null && Packets.ReconnectInfo.Game != null)
             {
@@ -491,7 +489,7 @@ namespace ChallengerBot
             
             var summonerName = "SN" + Guid.NewGuid().ToString("N").Substring(0, 12).ToUpper();
             await Connections.CreateDefaultSummoner(summonerName);
-            WebService.Status("Created summoner: " + summonerName, AccountName);
+            Client.Status("Created summoner: " + summonerName, AccountName);
         }
 
         private async void SetSummonerIcon()

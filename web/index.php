@@ -170,7 +170,7 @@
 										</div>
 										<div class="form-group">
 											<label for="maxlevel">Max level [1-30]:</label>
-											<input name="maxlevel" type="number" min = "1" max = "30" class="form-control" id="maxlevel" placeholder="Max level" value="<?php echo $Account['maxlevel']; ?>">
+											<input name="maxlevel" type="number" min = "1" max = "31" class="form-control" id="maxlevel" placeholder="Max level" value="<?php echo $Account['maxlevel']; ?>">
 										</div>
 										<div class="checkbox">
 											<label>
@@ -367,7 +367,7 @@
 									</div>
 									<div class="form-group">
 										<label for="maxlevel">Max level [1-30]:</label>
-										<input name="maxlevel" type="number" min = "1" max = "30" class="form-control" id="maxlevel">
+										<input name="maxlevel" type="number" min = "1" max = "31" class="form-control" id="maxlevel">
 									</div>
 									<div class="checkbox">
 										<label>
