@@ -60,6 +60,7 @@ namespace PVPNetBot
 
         private static void Preload()
         {
+            if (!Configuration.IsMySQLEnabled) return;
             using (var con = new MySqlConnection(Configuration.ConnectionString))
             {
                 using (var cmd = con.CreateCommand())
@@ -76,6 +77,7 @@ namespace PVPNetBot
 
         private static void LoadSettings()
         {
+            if (!Configuration.IsMySQLEnabled) return;
             using (var con = new MySqlConnection(Configuration.ConnectionString))
             {
                 using (MySqlCommand cmd = con.CreateCommand())
@@ -118,6 +120,7 @@ namespace PVPNetBot
 
         private static void LoadAccounts()
         {
+            if (!Configuration.IsMySQLEnabled) return;
             using (var con = new MySqlConnection(Configuration.ConnectionString))
             {
                 using (MySqlCommand cmd = con.CreateCommand())
@@ -150,6 +153,7 @@ namespace PVPNetBot
 
         public static void ExecuteNonQuery(string query)
         {
+            if (!Configuration.IsMySQLEnabled) return;
             using (var con = new MySqlConnection(Configuration.ConnectionString))
             {
                 using (MySqlCommand cmd = con.CreateCommand())
@@ -165,18 +169,21 @@ namespace PVPNetBot
 
         public static void SetLevel(int id, int level)
         {
+            if (!Configuration.IsMySQLEnabled) return;
             var cmd = "UPDATE accounts SET level = '" + level + "' WHERE id = '" + id + "'; ";
             ExecuteNonQuery(cmd);
         }
 
         public static void SetMoney(int id, int money)
         {
+            if (!Configuration.IsMySQLEnabled) return;
             var cmd = "UPDATE accounts SET money = '" + money + "' WHERE id = '" + id + "'; ";
             ExecuteNonQuery(cmd);
         }      
 
         public static void ConsoleStatus(string msg, string player)
         {
+            if (!Configuration.IsMySQLEnabled) return;
             var cmd = " INSERT INTO console (content, timestamp, player) VALUES ('" + msg + "', UNIX_TIMESTAMP(), '" + player + "'); ";
             ExecuteNonQuery(cmd);
         }
