@@ -199,7 +199,11 @@ namespace PVPNetBot
                 file.Close();
             }
 
-            ClientVersion = Controller.GetCurrentVersion(WebService.Setting.GamePath);
+            if (!File.Exists("version.txt"))
+                ClientVersion = Controller.GetCurrentVersion(WebService.Setting.GamePath);
+            else ClientVersion = File.ReadAllText("version.txt");
+
+            
             Console.WriteLine("Bot will start in few seconds...");
             System.Timers.Timer eTimer = new System.Timers.Timer
             {
