@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Win32;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -178,6 +179,12 @@ namespace PVPNetBot
                 PlayerAcceptedInvite = true;
                 Client.Status("Lobby created. Inviting players...", AccountName);
 
+                if (Client.Accounts.Count == 1)
+                {
+                    OnMessageReceived(sender, Client.Lobby);
+                    return;
+                }
+
                 foreach (var bot in Client.Accounts)
                 {
                     if ((int)bot.AllSummonerData.Summoner.SumId != (int)SummonerId)
@@ -297,7 +304,14 @@ namespace PVPNetBot
                             Client.Status("Game accepted!", AccountName);
                             FirstQueue = false;
                             FirstSelection = false;
-                            await Connections.AcceptPoppedGame(true);
+                            try
+                            {
+                                await Connections.AcceptPoppedGame(true);
+                            }
+                            catch
+                            {
+                                RestartQueue(sender);
+                            }
                             break;
                         }
                         break;
@@ -432,6 +446,12 @@ namespace PVPNetBot
             }
             #endregion
 
+        }
+
+        private async void RestartQueue(object sender)
+        {
+            await Connections.CancelFromQueueIfPossible(SummonerId);
+            OnMessageReceived(sender, new ClientBeforeStart());
         }
 
         private bool MaxLevelReached(int nextLevel)
