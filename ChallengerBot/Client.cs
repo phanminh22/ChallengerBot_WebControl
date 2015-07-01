@@ -165,7 +165,7 @@ namespace PVPNetBot
             }
             else if (File.Exists("Settings.ini")) Configuration.LoadSettings();
      
-            if (!File.Exists("accounts.txt"))
+            if (!File.Exists("accounts.txt") && !Configuration.IsMySQLEnabled)
             {
                 Console.WriteLine("Missing accounts.txt file.");
                 Console.WriteLine("One account per line. " + Environment.NewLine +
@@ -182,7 +182,7 @@ namespace PVPNetBot
                 {
                     string[] account = line.Split('|');
 
-                    bool boost = !account[3].Equals(0);
+                    bool boost = account[3] != "0";
 
                     Accounts bot = new Accounts
                     {
@@ -191,6 +191,7 @@ namespace PVPNetBot
                         Maxlevel = Convert.ToInt32(account[2]),
                         Autoboost = boost
                     };
+                  
                     WebService.Players.Add(bot);
                     LoadedPlayers++;
                 }
