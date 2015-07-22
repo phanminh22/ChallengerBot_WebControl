@@ -139,26 +139,29 @@ namespace PVPNetBot
                         break;
                 }
 
-                if (MaxBots != null)
+                if (MaxBots == null || GamePath == null || SelectedQueue == int.MaxValue || Region == null)
                 {
-                    var mbots = String.Join("", MaxBots.Where(char.IsDigit));
-                    Settings SFile = new Settings
-                    {
-                        GamePath = GamePath,
-                        MaxBots = Convert.ToInt32(mbots),
-                        Difficulty = SelectedDifficulty,
-                        QueueType = SelectedQueue,
-                        Region = Region
-                    };
-
-                    WebService.Setting = SFile;
-                    using (StreamWriter file = File.CreateText("Settings.ini"))
-                    using (JsonTextWriter writer = new JsonTextWriter(file))
-                    {
-                        writer.WriteRaw(JsonConvert.SerializeObject(SFile, Formatting.Indented));
-                    }
+                    Console.WriteLine("Some of settings was left not set. Please run ChallengerBot again and set all settings as it should be.");    
+                    return;
                 }
-                else return;
+
+                var mbots = String.Join("", MaxBots.Where(char.IsDigit));
+                Settings SFile = new Settings
+                {
+                    GamePath = GamePath,
+                    MaxBots = Convert.ToInt32(mbots),
+                    Difficulty = SelectedDifficulty,
+                    QueueType = SelectedQueue,
+                    Region = Region.ToUpper()
+                };
+
+
+                WebService.Setting = SFile;
+                using (StreamWriter file = File.CreateText("Settings.ini"))
+                using (JsonTextWriter writer = new JsonTextWriter(file))
+                {
+                    writer.WriteRaw(JsonConvert.SerializeObject(SFile, Formatting.Indented));
+                }
                 
                 Thread.Sleep(1000);
                 Console.WriteLine("Settings.ini file saved.");
@@ -203,6 +206,8 @@ namespace PVPNetBot
             if (!File.Exists("version.txt"))
                 ClientVersion = Controller.GetCurrentVersion(WebService.Setting.GamePath);
             else ClientVersion = File.ReadAllText("version.txt");
+            Console.WriteLine("Client version: " + ClientVersion);
+            Console.WriteLine("Selected region: " + WebService.Setting.Region);
 
             
             Console.WriteLine("Bot will start in few seconds...");

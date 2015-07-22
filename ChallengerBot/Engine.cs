@@ -49,9 +49,10 @@ namespace PVPNetBot
         public Engine(Accounts playerBot)
         {
             Account = playerBot;
-            Region curRegion = (Region)Enum.Parse(typeof(Region), _setting.Region);
+            Region curRegion = (Region)Enum.Parse(typeof(Region), _setting.Region.ToUpper());
             SummonerQueue = _setting.QueueType;
             AccountName = playerBot.Account;
+            //Console.WriteLine("Region: " + JsonConvert.SerializeObject(curRegion, Formatting.Indented));
 
             #region Callbacks
             Connections.OnError += (object sender, Error error) =>
@@ -104,6 +105,7 @@ namespace PVPNetBot
                 WebService.SetLevel(Account.Id, (int)SummonerLevel);
                 WebService.SetMoney(Account.Id, (int)Packets.IpBalance);
 
+               
                 if (SummonerLevel > Account.Maxlevel || Convert.ToInt32(SummonerLevel) == Account.Maxlevel)
                 {
                     Client.Status("Maximum level reached!", AccountName);
@@ -461,6 +463,10 @@ namespace PVPNetBot
 
         private async void BuyBoost()
         {
+            var Boosts = Connections.GetSummonerActiveBoosts();
+            if (Boosts.Result.XpBoostEndDate > 0) // xpb active
+                return;
+
             if (Packets.RpBalance > 260)
             {
                 var url = await Connections.GetStoreUrl();
@@ -506,7 +512,6 @@ namespace PVPNetBot
 
         private async void NewPlayerAccout()
         {
-            
             var summonerName = "SN" + Guid.NewGuid().ToString("N").Substring(0, 12).ToUpper();
             await Connections.CreateDefaultSummoner(summonerName);
             Client.Status("Created summoner: " + summonerName, AccountName);
