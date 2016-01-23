@@ -8,8 +8,8 @@
         
         // Connection settings
         const desination = "localhost";
-        const username = "root";
-        const password = "";
+        const username = "jaxbgato";
+        const password = "123minhngan";
         const database = "challenger";
         
         // Connection options
